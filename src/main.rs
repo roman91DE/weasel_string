@@ -3,7 +3,7 @@ use rand::Rng;
 struct Config {
     tokens: Vec<char>,
     target: String,
-    mut_prob: f32,
+    mut_prob: f64,
     pop_size: usize,
 }
 
@@ -79,20 +79,30 @@ fn mutate_string(input: &str, tokens: &[char], mutation_rate: f64) -> Result<Str
     Ok(mutated)
 }
 
-
 fn ea_simple(conf: Config) {
-
     let target_size: usize = conf.target.len();
-    let population = init_population(conf.pop_size, target_size, &conf.tokens);
+    let mut population = init_population(conf.pop_size, target_size, &conf.tokens)
+        .expect("Error during Population-Init");
+    population.sort_by_cached_key(|v| get_fitness(v, &conf.target));
+    let mut best_fitness =
+        get_fitness(&population[0], &conf.target).expect("Error during Fitness Computation");
 
-    let mut best_fitness = -1;
+    while best_fitness < target_size as u32 {
+        let elite_pop = &population[..population.len() / 2];
+        let mut_pop: Vec<String> = elite_pop
+            .iter()
+            .filter_map(|s| mutate_string(&s, &conf.tokens, conf.mut_prob).ok())
+            .collect();
 
-    
+        population =  elite_pop.iter().chain(mut_pop.iter()).cloned().collect();
+        population.sort_by_cached_key(|v| get_fitness(v, &conf.target));
+        best_fitness = get_fitness(&population[0], &conf.target).expect("...");
+        println!("{:?}", population[0])
+
+    }
 }
 
-
 fn main() {
-
     let conf = Config {
         tokens: "ABCDEFGHIJKLMNOPQRSTUVWXYZ ".chars().collect(),
         target: String::from("METHINKS IT IS LIKE A WEASEL"),
