@@ -1,14 +1,43 @@
 use rand::Rng;
 
-fn create_random_string(n: usize) -> String {
-    // Define the allowed characters (uppercase letters and space in this case)
-    let characters: Vec<char> = "ABCDEFGHIJKLMNOPQRSTUVWXYZ ".chars().collect();
+struct Config {
+    tokens: Vec<char>,
+    target: String,
+    mut_prob: f32,
+    pop_size: usize,
+}
 
-    // Create a random string of length `n`
+fn create_random_string(n: usize, tokens: &[char]) -> Result<String, String> {
+    if tokens.is_empty() {
+        return Err(String::from("Empty Set of Tokens"));
+    }
+
     let mut rng = rand::thread_rng();
-    (0..n)
-        .map(|_| characters[rng.gen_range(0..characters.len())])
-        .collect()
+    let random = (0..n)
+        .map(|_| tokens[rng.gen_range(0..tokens.len())])
+        .collect();
+    return Ok(random);
+}
+
+fn init_population(
+    popsize: usize,
+    stringlen: usize,
+    tokens: &[char],
+) -> Result<Vec<String>, String> {
+    if tokens.is_empty() {
+        return Err(String::from("Empty Set of Tokens"));
+    }
+
+    let mut population: Vec<String> = Vec::with_capacity(popsize);
+
+    for _ in 0..popsize {
+        match create_random_string(stringlen, tokens) {
+            Ok(random_string) => population.push(random_string),
+            Err(e) => return Err(e),
+        }
+    }
+
+    Ok(population)
 }
 
 fn get_fitness(solution: &str, target: &str) -> Result<u32, String> {
@@ -27,24 +56,19 @@ fn get_fitness(solution: &str, target: &str) -> Result<u32, String> {
     Ok(fitscore)
 }
 
-fn mutate_string(input: &str, mutation_rate: f64) -> Option<String> {
-    if mutation_rate < 0.0 || mutation_rate > 1.0 {
-        return None;
+fn mutate_string(input: &str, tokens: &[char], mutation_rate: f64) -> Result<String, String> {
+    if tokens.is_empty() {
+        return Err(String::from("Empty Set of Tokens"));
     }
 
-    // Define the allowed characters (uppercase letters and space in this case)
-    let characters: Vec<char> = "ABCDEFGHIJKLMNOPQRSTUVWXYZ ".chars().collect();
-
-    // Create a mutable random generator
     let mut rng = rand::thread_rng();
 
-    // Iterate through each character in the input and decide whether to mutate
-    let output = input
+    let mutated: String = input
         .chars()
         .map(|c| {
             if rng.gen::<f64>() < mutation_rate {
-                // Mutate the character
-                characters[rng.gen_range(0..characters.len())]
+                // Mutate the character by picking a random token
+                tokens[rng.gen_range(0..tokens.len())]
             } else {
                 // Keep the original character
                 c
@@ -52,21 +76,29 @@ fn mutate_string(input: &str, mutation_rate: f64) -> Option<String> {
         })
         .collect();
 
-    Some(output)
+    Ok(mutated)
 }
 
+
+fn ea_simple(conf: Config) {
+
+    let target_size: usize = conf.target.len();
+    let population = init_population(conf.pop_size, target_size, &conf.tokens);
+
+    let mut best_fitness = -1;
+
+    
+}
+
+
 fn main() {
-    let target: &str = "METHINKS IT IS LIKE A WEASEL";
-    let target_size: usize = target.len();
 
-    // let pop_size = 100;
+    let conf = Config {
+        tokens: "ABCDEFGHIJKLMNOPQRSTUVWXYZ ".chars().collect(),
+        target: String::from("METHINKS IT IS LIKE A WEASEL"),
+        mut_prob: 0.05,
+        pop_size: 100,
+    };
 
-    let solution = create_random_string(target_size);
-
-    for _ in 0..100 {
-        let solution = mutate_string(&solution, 0.05).expect("Mutation failed");
-        print!("{:?}\n", solution);
-        let fit = get_fitness(&solution, target).unwrap();
-        print!("Fitness={:?}\n", fit);
-    }
+    ea_simple(conf);
 }
